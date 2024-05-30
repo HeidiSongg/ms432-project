@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS ccvi (
     rank_covid_19_incidence_rate NUMERIC, 
     rank_covid_19_hospital_admission_rate NUMERIC,
     rank_covid_19_crude_mortality_rate NUMERIC,
-    location TEXT
+    location JSONB
 )
 ''')
 conn.commit()
