@@ -1,72 +1,69 @@
-#!/usr/bin/env python
-
-# make sure to install these packages before running:
-# pip install pandas
-# pip install sodapy
-
 import pandas as pd
 from sodapy import Socrata
 from sqlalchemy import create_engine
 import psycopg2
 import json
 
+# Initialize Socrata client
 client = Socrata("data.cityofchicago.org", None)
 
-query = """SELECT the_geom \
-    ,perimeter \
-    ,area \
-    ,comarea \
-    ,comarea_id  \
-    ,area_numbe \
-    ,community \
-    ,area_num_1 \
-    ,shape_area \
-    ,shape_len \
-    limit 20000 """
+# Query data
+query = """
+SELECT the_geom,
+       perimeter,
+       area,
+       comarea,
+       comarea_id,
+       area_numbe,
+       community,
+       area_num_1,
+       shape_area,
+       shape_len
+LIMIT 20000
+"""
 
 results = client.get("igwz-8jzy", query=query)
 
+# Convert results to DataFrame
 results_df = pd.DataFrame.from_records(results)
 
-def convert_complex_types(df):
-    for col in df.columns:
-        if df[col].apply(lambda x: isinstance(x, (dict, list))).any():
-            df[col] = df[col].apply(lambda x: json.dumps(x) if isinstance(x, (dict, list)) else x)
-    return df
+#Convert columns to numeric, handling errors
+for col in ['perimeter', 'area', 'comarea' ,'comarea_id', 'shape_area', 'shape_len']:
+    results_df[col] = pd.to_numeric(results_df[col], errors='coerce')
 
-results_df = convert_complex_types(results_df)
+# Convert complex types to JSON strings
+results_df = results_df.applymap(lambda x: json.dumps(x) if isinstance(x, (dict, list)) else x)
 
-def load_data_to_postgresql(df):
-    engine = create_engine('postgresql+psycopg2://hs:password1@localhost/postgres')
-    df.to_sql('commarea', con=engine, if_exists='replace', index=False)
+# Define PostgreSQL connection details
+db_config = {
+    'dbname': 'postgres',
+    'user': 'hs',
+    'password': 'password1',
+    'host': 'localhost'
+}
 
-conn = psycopg2.connect(
-    host="localhost",  
-    database="postgres",  
-    user="hs", 
-    password="password1" 
-)
-
+# Create table if it doesn't exist
+conn = psycopg2.connect(**db_config)
 cursor = conn.cursor()
-
 cursor.execute('''
 CREATE TABLE IF NOT EXISTS commarea (
-    the_geom JSONB,
-    perimeter NUMERIC,
-    area NUMERIC,
-    comarea NUMERIC,
-    comarea_id NUMERIC,
-    area_numbe TEXT,
-    community TEXT,
-    area_num_1 TEXT,
-    shape_area NUMERIC,
-    shape_len NUMERIC
+       the_geom  TEXT,
+       perimeter NUMERIC,
+       area      NUMERIC,
+       comarea   NUMERIC,
+       comarea_id NUMERIC,
+       area_numbe TEXT,
+       community  TEXT,
+       area_num_1 TEXT,
+       shape_area NUMERIC,
+       shape_len NUMERIC
 )
 ''')
 conn.commit()
 
-engine = create_engine('postgresql+psycopg2://hs:password1@localhost:5432/chicago')
+# Create engine and load data to PostgreSQL
+engine = create_engine(f"postgresql+psycopg2://{db_config['user']}:{db_config['password']}@{db_config['host']}/{db_config['dbname']}")
+results_df.to_sql('commarea', con=engine, if_exists='replace', index=False)
 
-load_data_to_postgresql(results_df)
-
+# Close the connection
 conn.close()

@@ -4,56 +4,56 @@ from sqlalchemy import create_engine
 import psycopg2
 import json
 
-client = Socrata("data.cityofchicago.org", None, timeout = 120)
+# Initialize Socrata client
+client = Socrata("data.cityofchicago.org", None)
 
-query = """SELECT trip_id \
-    ,trip_start_timestamp \
-    ,trip_end_timestamp \
-    ,trip_seconds  \
-    ,trip_miles \
-    ,pickup_census_tract \
-    ,dropoff_census_tract \
-    ,pickup_community_area \
-    ,dropoff_community_area \
-    ,pickup_centroid_latitude \
-    ,pickup_centroid_longitude \
-    ,dropoff_centroid_latitude \
-    ,dropoff_centroid_longitude \
+# Query data
+query = """
+SELECT 
+    trip_id,
+    trip_start_timestamp,
+    trip_end_timestamp,
+    pickup_community_area,
+    dropoff_community_area,
+    pickup_centroid_latitude,
+    pickup_centroid_longitude,
+    dropoff_centroid_latitude,
+    dropoff_centroid_longitude
     WHERE trip_start_timestamp >='2020-01-01'
-    limit 20000 """
+LIMIT 20000
+"""
 
 results = client.get("m6dm-c72p", query=query)
 
+# Convert results to DataFrame
 results_df = pd.DataFrame.from_records(results)
 
-def convert_complex_types(df):
-    for col in df.columns:
-        if df[col].apply(lambda x: isinstance(x, (dict, list))).any():
-            df[col] = df[col].apply(lambda x: json.dumps(x) if isinstance(x, (dict, list)) else x)
-    return df
 
-results_df = convert_complex_types(results_df)
+for col in ['pickup_community_area','dropoff_community_area','pickup_centroid_latitude','pickup_centroid_longitude','dropoff_centroid_latitude','dropoff_centroid_longitude']:
+    results_df[col] = pd.to_numeric(results_df[col], errors='coerce')
 
-def load_data_to_postgresql(df):
-    engine = create_engine('postgresql+psycopg2://hs:password1@localhost/postgres')
-    df.to_sql('taxitrips', con=engine, if_exists='replace', index=False)
+for col in ['trip_start_timestamp','trip_end_timestamp']:
+    results_df[col] = pd.to_datetime(results_df[col], errors='coerce')
 
-conn = psycopg2.connect(
-    host="localhost",  
-    database="postgres",  
-    user="hs", 
-    password="password1" 
-)
+# Convert complex types to JSON strings
+results_df = results_df.applymap(lambda x: json.dumps(x) if isinstance(x, (dict, list)) else x)
 
+# Define PostgreSQL connection details
+db_config = {
+    'dbname': 'postgres',
+    'user': 'hs',
+    'password': 'password1',
+    'host': 'localhost'
+}
+
+# Create table if it doesn't exist
+conn = psycopg2.connect(**db_config)
 cursor = conn.cursor()
-
 cursor.execute('''
 CREATE TABLE IF NOT EXISTS taxitrips (
     trip_id TEXT,
     trip_start_timestamp TIMESTAMPTZ,
     trip_end_timestamp TIMESTAMPTZ,
-    trip_seconds NUMERIC,
-    trip_miles NUMERIC,
     pickup_community_area NUMERIC,
     dropoff_community_area NUMERIC,
     pickup_centroid_latitude NUMERIC,
@@ -64,8 +64,9 @@ CREATE TABLE IF NOT EXISTS taxitrips (
 ''')
 conn.commit()
 
-engine = create_engine('postgresql+psycopg2://hs:password1@localhost:5432/chicago')
+# Create engine and load data to PostgreSQL
+engine = create_engine(f"postgresql+psycopg2://{db_config['user']}:{db_config['password']}@{db_config['host']}/{db_config['dbname']}")
+results_df.to_sql('taxitrips', con=engine, if_exists='replace', index=False)
 
-load_data_to_postgresql(results_df)
-
+# Close the connection
 conn.close()
