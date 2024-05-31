@@ -3,6 +3,10 @@ from sodapy import Socrata
 from sqlalchemy import create_engine
 import psycopg2
 import json
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Initialize Socrata client
 client = Socrata("data.cityofchicago.org", None)
@@ -34,10 +38,10 @@ results_df = results_df.applymap(lambda x: json.dumps(x) if isinstance(x, (dict,
 
 # Define PostgreSQL connection details
 db_config = {
-    'dbname': 'postgres',
-    'user': 'hs',
-    'password': 'password1',
-    'host': 'localhost'
+    'dbname': os.getenv('DB_NAME'),
+    'user': os.getenv('DB_USER'),
+    'password': os.getenv('DB_PASSWORD'),
+    'host': os.getenv('DB_HOST')
 }
 
 # Create table if it doesn't exist
