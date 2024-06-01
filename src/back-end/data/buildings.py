@@ -31,6 +31,8 @@ SELECT id,
     ycoordinate,
     latitude,
     longitude
+WHERE application_start_date >='2020-03-01'
+    AND community_area IS NOT NULL 
 LIMIT 20000
 """
 
@@ -40,7 +42,7 @@ results = client.get("ydr8-5enu", query=query)
 results_df = pd.DataFrame.from_records(results)
 
 
-for col in ['total_fee','community_area','census_tract','xcoordinate','ycoordinate','latitude','longitude']:
+for col in ['total_fee','census_tract','xcoordinate','ycoordinate','latitude','longitude']:
     results_df[col] = pd.to_numeric(results_df[col], errors='coerce')
 
 for col in ['application_start_date','issue_date']:
