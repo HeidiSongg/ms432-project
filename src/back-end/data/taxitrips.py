@@ -26,7 +26,9 @@ SELECT
     pickup_centroid_longitude,
     dropoff_centroid_latitude,
     dropoff_centroid_longitude
-    WHERE trip_start_timestamp >='2020-01-01'
+    WHERE trip_start_timestamp >='2020-03-01'
+    AND pickup_community_area IS NOT NULL 
+    AND dropoff_community_area IS NOT NULL
 LIMIT 1000
 """
 
@@ -79,7 +81,7 @@ db_config = {
 conn = psycopg2.connect(**db_config)
 cursor = conn.cursor()
 cursor.execute('''
-CREATE TABLE IF NOT EXISTS testt (
+CREATE TABLE IF NOT EXISTS taxitrip (
     trip_id TEXT,
     trip_start_timestamp TIMESTAMPTZ,
     trip_end_timestamp TIMESTAMPTZ,
@@ -97,7 +99,7 @@ conn.commit()
 
 # Create engine and load data to PostgreSQL
 engine = create_engine(f"postgresql+psycopg2://{db_config['user']}:{db_config['password']}@{db_config['host']}/{db_config['dbname']}")
-results_df.to_sql('testt', con=engine, if_exists='replace', index=False)
+results_df.to_sql('taxitrip', con=engine, if_exists='replace', index=False)
 
 # Close the connection
 conn.close()

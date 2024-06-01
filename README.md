@@ -6,6 +6,7 @@ Key datasets include:
 
 - Taxi/Rideshare trips
 - COVID-19 Community Vulnerability Index (CCVI)
+- COVID-19 Cases, Tests, and Deaths by ZIP Code - Historical
 - Community Area
 - Unemployment
 - Building permits

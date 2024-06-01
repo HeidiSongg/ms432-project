@@ -30,7 +30,7 @@ results = client.get("xhc6-88s9", query=query)
 results_df = pd.DataFrame.from_records(results)
 
 #Convert columns to numeric, handling errors
-for col in ['community_area_or_zip', 'ccvi_score', 'rank_socioeconomic_status']:
+for col in ['ccvi_score', 'rank_socioeconomic_status']:
     results_df[col] = pd.to_numeric(results_df[col], errors='coerce')
 
 # Convert complex types to JSON strings
@@ -50,7 +50,7 @@ cursor = conn.cursor()
 cursor.execute('''
 CREATE TABLE IF NOT EXISTS ccvi (
     geography_type TEXT,
-    community_area_or_zip NUMERIC,
+    community_area_or_zip TEXT,
     community_area_name TEXT,
     ccvi_score NUMERIC,
     ccvi_category TEXT,
