@@ -401,4 +401,4 @@ WHERE permit_count = (SELECT MIN(permit_count) FROM permit_cnt)
 
 # Start the server
 if __name__ == '__main__':
-    app.run(port=3001)
+    app.run(debug=True)
